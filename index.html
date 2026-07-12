@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Hk2en — Cantonese → English Live Translator</title>
 <style>
   :root {
@@ -11,7 +13,6 @@
     --text: #f2f4f8;
     --dim: #8b93a3;
     --accent: #4da3ff;
-    --accent-soft: rgba(77, 163, 255, 0.15);
     --danger: #ff5d5d;
     --ok: #3ddc84;
     --radius: 14px;
@@ -25,13 +26,14 @@
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     display: flex;
     flex-direction: column;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
   }
 
   header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px 20px;
+    gap: 10px;
+    padding: 12px 16px;
     background: var(--panel);
     border-bottom: 1px solid #232733;
     flex-wrap: wrap;
@@ -49,10 +51,11 @@
     font: inherit;
     border: none;
     border-radius: 999px;
-    padding: 10px 20px;
+    padding: 9px 16px;
     cursor: pointer;
     font-weight: 600;
     transition: filter .15s, transform .05s;
+    -webkit-tap-highlight-color: transparent;
   }
   button:active { transform: scale(0.97); }
   button:hover { filter: brightness(1.12); }
@@ -63,7 +66,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    min-width: 160px;
+    min-width: 150px;
     justify-content: center;
   }
   #micBtn.listening { background: var(--danger); color: #fff; }
@@ -88,7 +91,7 @@
   #status {
     font-size: 0.8rem;
     color: var(--dim);
-    padding: 6px 20px;
+    padding: 6px 16px;
     min-height: 1.6em;
   }
   #status.error { color: var(--danger); }
@@ -97,18 +100,30 @@
   main {
     flex: 1;
     overflow-y: auto;
-    padding: 20px clamp(16px, 6vw, 80px) 40px;
+    -webkit-overflow-scrolling: touch;
+    padding: 20px clamp(16px, 6vw, 80px) 20px;
     scroll-behavior: smooth;
   }
 
   #placeholder {
     color: var(--dim);
     text-align: center;
-    margin-top: 14vh;
+    margin-top: 8vh;
     line-height: 1.7;
     font-size: 1.05rem;
   }
   #placeholder .big { font-size: 2.6rem; margin-bottom: 12px; }
+  #placeholder .hint {
+    margin: 18px auto 0;
+    max-width: 480px;
+    font-size: 0.9rem;
+    text-align: left;
+    background: var(--panel);
+    border: 1px solid #2b3040;
+    border-radius: var(--radius);
+    padding: 14px 18px;
+  }
+  #placeholder .hint b { color: var(--text); }
 
   .entry {
     margin-bottom: 26px;
@@ -133,20 +148,45 @@
   body.hide-yue .entry .yue { display: none; }
 
   #interim {
-    position: sticky;
-    bottom: 0;
-    background: linear-gradient(transparent, var(--bg) 25%);
-    padding: 18px 0 4px;
     color: var(--accent);
     font-size: 1.15rem;
     line-height: 1.5;
-    min-height: 2em;
+    padding: 8px 0;
   }
   #interim:empty { display: none; }
 
+  /* Keyboard-dictation input bar (default on iOS) */
+  #typeBar {
+    display: none;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: var(--panel);
+    border-top: 1px solid #232733;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  body.mode-type #typeBar { display: flex; }
+  body.mode-type #micBtn { display: none; }
+  #dictBox {
+    flex: 1;
+    font: inherit;
+    font-size: 1.15rem;
+    line-height: 1.5;
+    color: var(--text);
+    background: #0c0e12;
+    border: 1px solid #2b3040;
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    resize: none;
+    height: 3.2em;
+    max-height: 6.5em;
+    outline: none;
+  }
+  #dictBox:focus { border-color: var(--accent); }
+  #dictBox::placeholder { color: var(--dim); }
+
   #unsupported {
     display: none;
-    margin: 12vh auto 0;
+    margin: 8vh auto 0;
     max-width: 560px;
     background: var(--panel);
     border: 1px solid #2b3040;
@@ -154,13 +194,14 @@
     padding: 28px;
     line-height: 1.7;
   }
-  #unsupported h2 { margin-bottom: 10px; color: var(--danger); font-size: 1.2rem; }
+  #unsupported h2 { margin-bottom: 10px; font-size: 1.2rem; }
 
   @media (max-width: 600px) {
-    :root { --en-size: 1.6rem; }
-    header { padding: 10px 12px; gap: 8px; }
-    button { padding: 8px 14px; }
-    #micBtn { min-width: 130px; }
+    :root { --en-size: 1.7rem; }
+    header { padding: 10px 10px; gap: 6px; }
+    button { padding: 8px 12px; font-size: 0.9rem; }
+    #micBtn { min-width: 120px; }
+    header h1 { font-size: 0.95rem; }
   }
 </style>
 </head>
@@ -172,26 +213,26 @@
   <button id="fontUp" class="ghost" title="Larger text">A+</button>
   <button id="toggleYue" class="ghost active" title="Show/hide original Cantonese">粵</button>
   <button id="clearBtn" class="ghost">Clear</button>
+  <button id="modeBtn" class="ghost" title="Switch input mode">⌨️</button>
   <button id="micBtn"><span class="dot"></span><span id="micLabel">Start listening</span></button>
 </header>
 
-<div id="status">Press “Start listening”, then speak Cantonese. English appears below.</div>
+<div id="status"></div>
 
 <main id="main">
-  <div id="unsupported">
-    <h2>Speech recognition not available</h2>
-    <p>This browser doesn't support the Web Speech API for dictation.
-       Please open this page in <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>
-       (desktop or Android), over <strong>https://</strong> or <strong>localhost</strong>.</p>
-  </div>
   <div id="placeholder">
     <div class="big">🎙️ 講嘢啦！</div>
-    Speak Cantonese — long speech is fine.<br>
-    Each phrase is translated into large, readable English text as you go.
+    <div id="phText"></div>
+    <div class="hint" id="phHint"></div>
   </div>
   <div id="transcript"></div>
   <div id="interim"></div>
 </main>
+
+<div id="typeBar">
+  <textarea id="dictBox" rows="2"
+    placeholder="㩒呢度，再㩒鍵盤嘅 🎙️ 講廣東話…&#10;Tap here, then tap 🎙️ on your keyboard and speak."></textarea>
+</div>
 
 <script>
 (() => {
@@ -201,23 +242,63 @@
   const micBtn = $('micBtn'), micLabel = $('micLabel'), statusEl = $('status');
   const transcriptEl = $('transcript'), interimEl = $('interim');
   const mainEl = $('main'), placeholder = $('placeholder');
+  const dictBox = $('dictBox'), modeBtn = $('modeBtn');
 
-  // ---------- Speech recognition (Cantonese dictation) ----------
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS
+  const isAppleWebKit = isIOS || /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    $('unsupported').style.display = 'block';
-    placeholder.style.display = 'none';
-    micBtn.disabled = true;
-    setStatus('Unsupported browser.', 'error');
+
+  // ---------- Input modes ----------
+  // 'mic'  = in-page speech recognition (Chrome/Edge desktop & Android)
+  // 'type' = native keyboard dictation into a text box (reliable on iOS,
+  //          where in-page speech recognition is flaky)
+  let mode = (isIOS || !SR) ? 'type' : 'mic';
+
+  function applyMode() {
+    document.body.classList.toggle('mode-type', mode === 'type');
+    modeBtn.textContent = mode === 'type' ? '🎤' : '⌨️';
+    modeBtn.title = mode === 'type'
+      ? 'Switch to in-page microphone' : 'Switch to keyboard dictation';
+    modeBtn.style.display = SR ? '' : 'none'; // no mic mode to switch to
+    if (mode === 'type') {
+      stopListening(true);
+      $('phText').innerHTML =
+        'Tap the box below, tap the <b>🎙️ mic on your keyboard</b>, and speak Cantonese.<br>' +
+        'Long speech is fine — English appears here as you pause.';
+      $('phHint').innerHTML =
+        '<b>First time on iPhone?</b> Add the Cantonese keyboard: ' +
+        'Settings → General → Keyboard → Keyboards → Add New Keyboard → ' +
+        '<b>Cantonese, Traditional (廣東話)</b>, and make sure ' +
+        '<b>Enable Dictation</b> is on. Then in the box below, hold 🌐 to ' +
+        'pick 廣東話 and tap the keyboard’s 🎙️.';
+      setStatus('Keyboard dictation mode — tap the box below to start. 用鍵盤嘅咪高風講嘢。');
+    } else {
+      $('phText').innerHTML =
+        'Press <b>Start listening</b>, speak Cantonese — long speech is fine.<br>' +
+        'Each phrase becomes large, readable English text as you go.';
+      $('phHint').innerHTML =
+        'Works in <b>Chrome or Edge</b> (desktop / Android). On iPhone or iPad, ' +
+        'use the ⌨️ keyboard-dictation mode instead.';
+      setStatus('Press “Start listening”, then speak Cantonese.');
+    }
   }
 
+  modeBtn.addEventListener('click', () => {
+    mode = (mode === 'type') ? 'mic' : 'type';
+    applyMode();
+  });
+
+  // ---------- Mic mode: in-page speech recognition ----------
   let recognition = null;
   let listening = false;        // user intent: should we be listening?
   let restartTimer = null;
 
   function buildRecognition() {
     const rec = new SR();
-    rec.lang = 'yue-Hant-HK';   // Cantonese (Hong Kong)
+    // Apple's recognizer uses zh-HK for Cantonese; Google's uses yue-Hant-HK.
+    rec.lang = isAppleWebKit ? 'zh-HK' : 'yue-Hant-HK';
     rec.continuous = true;      // keep going through long speech
     rec.interimResults = true;
 
@@ -249,7 +330,7 @@
       }
     };
 
-    // Chrome stops recognition periodically; auto-restart so long
+    // Browsers stop recognition periodically; auto-restart so long
     // Cantonese speech keeps flowing without the user doing anything.
     rec.onend = () => {
       interimEl.textContent = '';
@@ -279,12 +360,13 @@
     updateMicUI();
   }
 
-  function stopListening() {
+  function stopListening(silent) {
+    const wasListening = listening;
     listening = false;
     clearTimeout(restartTimer);
     if (recognition) { try { recognition.stop(); } catch (_) {} }
     interimEl.textContent = '';
-    setStatus('Paused. Press “Start listening” to continue.');
+    if (wasListening && !silent) setStatus('Paused. Press “Start listening” to continue.');
     updateMicUI();
   }
 
@@ -295,6 +377,34 @@
     micLabel.textContent = listening ? 'Stop' : 'Start listening';
   }
 
+  // ---------- Type mode: native keyboard dictation ----------
+  // iOS keyboard dictation streams text into the box. We never touch the
+  // box while the user is dictating (that would break iOS dictation);
+  // instead we track how much text is already translated and commit the
+  // new remainder whenever typing/dictation pauses briefly.
+  let committed = 0;
+  let commitTimer = null;
+
+  dictBox.addEventListener('input', () => {
+    if (dictBox.value.length < committed) committed = dictBox.value.length;
+    clearTimeout(commitTimer);
+    commitTimer = setTimeout(commitDictation, 1000);
+  });
+
+  function commitDictation() {
+    const text = dictBox.value.slice(committed).trim();
+    if (!text) return;
+    committed = dictBox.value.length;
+    addEntry(text);
+    // Keep the box from growing forever once it's safe to trim:
+    // only trim when everything so far is committed.
+    if (dictBox.value.length > 2000 && committed === dictBox.value.length
+        && document.activeElement !== dictBox) {
+      dictBox.value = '';
+      committed = 0;
+    }
+  }
+
   // ---------- Translation (Cantonese → English) ----------
   // Uses Google Translate's public web endpoint — no API key needed.
   // Tries Cantonese ('yue') first, falls back to Chinese if unavailable.
@@ -302,7 +412,11 @@
     const attempt = async (sl) => {
       const url = 'https://translate.googleapis.com/translate_a/single'
         + '?client=gtx&sl=' + sl + '&tl=en&dt=t&q=' + encodeURIComponent(text);
-      const resp = await fetch(url);
+      // Timeout so one stalled request can't block the whole queue.
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+      const resp = await fetch(url, { signal: controller.signal })
+        .finally(() => clearTimeout(timer));
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const data = await resp.json();
       const out = (data[0] || []).map(seg => seg[0]).join('').trim();
@@ -362,6 +476,8 @@
   $('clearBtn').addEventListener('click', () => {
     transcriptEl.innerHTML = '';
     interimEl.textContent = '';
+    dictBox.value = '';
+    committed = 0;
     placeholder.style.display = '';
   });
 
@@ -370,13 +486,15 @@
     e.currentTarget.classList.toggle('active', !document.body.classList.contains('hide-yue'));
   });
 
-  let enSize = 2.2;
+  let enSize = window.matchMedia('(max-width: 600px)').matches ? 1.7 : 2.2;
   $('fontUp').addEventListener('click', () => setFont(enSize + 0.3));
   $('fontDown').addEventListener('click', () => setFont(enSize - 0.3));
   function setFont(v) {
     enSize = Math.min(5, Math.max(1, v));
     document.documentElement.style.setProperty('--en-size', enSize + 'rem');
   }
+
+  applyMode();
 })();
 </script>
 </body>
