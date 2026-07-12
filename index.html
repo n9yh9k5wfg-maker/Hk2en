@@ -124,6 +124,15 @@
     padding: 14px 18px;
   }
   #placeholder .hint b { color: var(--text); }
+  #phHint:empty { display: none; }
+  #placeholder .steps {
+    margin-top: 14px;
+    font-size: 1.15rem;
+    line-height: 2.1;
+    text-align: left;
+    display: inline-block;
+  }
+  #placeholder .steps b { color: var(--text); }
 
   .entry {
     margin-bottom: 26px;
@@ -156,6 +165,17 @@
   #interim:empty { display: none; }
 
   /* Keyboard-dictation input bar (default on iOS) */
+  #kbTip {
+    display: none;
+    background: var(--accent);
+    color: #06121f;
+    font-weight: 600;
+    font-size: 1.05rem;
+    line-height: 1.6;
+    padding: 12px 16px;
+    text-align: center;
+  }
+  body.mode-type #kbTip.show { display: block; }
   #typeBar {
     display: none;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
@@ -177,8 +197,8 @@
     border-radius: var(--radius);
     padding: 12px 14px;
     resize: none;
-    height: 3.2em;
-    max-height: 6.5em;
+    height: 4em;
+    max-height: 7em;
     outline: none;
   }
   #dictBox:focus { border-color: var(--accent); }
@@ -222,16 +242,20 @@
 <main id="main">
   <div id="placeholder">
     <div class="big">🎙️ 講嘢啦！</div>
-    <div id="phText"></div>
+    <!-- Static fallback: visible only where JavaScript can't run
+         (e.g. iOS file previews). Replaced on load when the app starts. -->
+    <div id="phText">⚠️ The app hasn't started — this looks like a file
+      preview. Please open this page in <b>Safari</b> instead.</div>
     <div class="hint" id="phHint"></div>
   </div>
   <div id="transcript"></div>
   <div id="interim"></div>
 </main>
 
+<div id="kbTip">1️⃣ Hold 🌐 and pick <b>廣東話</b> &nbsp;→&nbsp; 2️⃣ Tap the keyboard's 🎙️ &nbsp;→&nbsp; 3️⃣ Speak!</div>
 <div id="typeBar">
   <textarea id="dictBox" rows="2"
-    placeholder="㩒呢度，再㩒鍵盤嘅 🎙️ 講廣東話…&#10;Tap here, then tap 🎙️ on your keyboard and speak."></textarea>
+    placeholder="👉 㩒呢度開始 · Tap here to start"></textarea>
 </div>
 
 <script>
@@ -265,15 +289,17 @@
     if (mode === 'type') {
       stopListening(true);
       $('phText').innerHTML =
-        'Tap the box below, tap the <b>🎙️ mic on your keyboard</b>, and speak Cantonese.<br>' +
-        'Long speech is fine — English appears here as you pause.';
+        '<div class="steps">' +
+        '1️⃣ <b>Tap the box</b> at the bottom of the screen<br>' +
+        '2️⃣ Hold 🌐 on the keyboard, pick <b>廣東話</b><br>' +
+        '3️⃣ Tap the keyboard’s <b>🎙️</b> and just talk</div><br>' +
+        'English appears here in big letters as you speak.';
       $('phHint').innerHTML =
         '<b>First time on iPhone?</b> Add the Cantonese keyboard: ' +
         'Settings → General → Keyboard → Keyboards → Add New Keyboard → ' +
         '<b>Cantonese, Traditional (廣東話)</b>, and make sure ' +
-        '<b>Enable Dictation</b> is on. Then in the box below, hold 🌐 to ' +
-        'pick 廣東話 and tap the keyboard’s 🎙️.';
-      setStatus('Keyboard dictation mode — tap the box below to start. 用鍵盤嘅咪高風講嘢。');
+        '<b>Enable Dictation</b> is on.';
+      setStatus('Ready — tap the box below to start. 㩒下面個框開始。');
     } else {
       $('phText').innerHTML =
         'Press <b>Start listening</b>, speak Cantonese — long speech is fine.<br>' +
@@ -385,7 +411,15 @@
   let committed = 0;
   let commitTimer = null;
 
+  // Show a one-time "how to dictate" banner when the box is first tapped,
+  // and hide it as soon as real text starts arriving.
+  const kbTip = $('kbTip');
+  dictBox.addEventListener('focus', () => {
+    if (!transcriptEl.children.length && !dictBox.value) kbTip.classList.add('show');
+  });
+
   dictBox.addEventListener('input', () => {
+    if (dictBox.value.trim()) kbTip.classList.remove('show');
     if (dictBox.value.length < committed) committed = dictBox.value.length;
     clearTimeout(commitTimer);
     commitTimer = setTimeout(commitDictation, 1000);
