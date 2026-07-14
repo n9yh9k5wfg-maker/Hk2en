@@ -302,11 +302,16 @@
       setStatus('Ready — tap the box below to start. 㩒下面個框開始。');
     } else {
       $('phText').innerHTML =
-        'Press <b>Start listening</b>, speak Cantonese — long speech is fine.<br>' +
-        'Each phrase becomes large, readable English text as you go.';
-      $('phHint').innerHTML =
-        'Works in <b>Chrome or Edge</b> (desktop / Android). On iPhone or iPad, ' +
-        'use the ⌨️ keyboard-dictation mode instead.';
+        '<div class="steps">' +
+        '1️⃣ Press <b>Start listening</b> and allow the microphone<br>' +
+        '2️⃣ 📍 Put the phone <b>close to whoever is talking</b><br>' +
+        '3️⃣ English appears here in big letters as they speak</div>';
+      $('phHint').innerHTML = isAppleWebKit
+        ? 'Hands-free mode: no keyboard needed — it listens continuously and ' +
+          'restarts itself. If it keeps stopping or mishears, switch back to ' +
+          'the ⌨️ keyboard mode.'
+        : 'Works in <b>Chrome or Edge</b> (desktop / Android). On iPhone or ' +
+          'iPad you can also try the ⌨️ keyboard-dictation mode.';
       setStatus('Press “Start listening”, then speak Cantonese.');
     }
   }
@@ -325,7 +330,9 @@
     const rec = new SR();
     // Apple's recognizer uses zh-HK for Cantonese; Google's uses yue-Hant-HK.
     rec.lang = isAppleWebKit ? 'zh-HK' : 'yue-Hant-HK';
-    rec.continuous = true;      // keep going through long speech
+    // Apple's continuous mode is unreliable; run one phrase per session and
+    // rely on the auto-restart in onend to keep listening indefinitely.
+    rec.continuous = !isAppleWebKit;
     rec.interimResults = true;
 
     rec.onresult = (event) => {
@@ -378,11 +385,31 @@
     return rec;
   }
 
+  // Keep the screen awake during long conversations — the phone locking
+  // is the most common reason a listening session silently dies.
+  let wakeLock = null;
+  async function keepAwake(on) {
+    try {
+      if (on && 'wakeLock' in navigator && !wakeLock) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      } else if (!on && wakeLock) {
+        await wakeLock.release();
+        wakeLock = null;
+      }
+    } catch (_) { /* unsupported or denied — harmless */ }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible'
+        && (listening || document.activeElement === dictBox)) keepAwake(true);
+  });
+
   function startListening() {
     if (!SR) return;
     listening = true;
     if (!recognition) recognition = buildRecognition();
     try { recognition.start(); } catch (_) { /* already running */ }
+    keepAwake(true);
     updateMicUI();
   }
 
@@ -393,6 +420,7 @@
     if (recognition) { try { recognition.stop(); } catch (_) {} }
     interimEl.textContent = '';
     if (wasListening && !silent) setStatus('Paused. Press “Start listening” to continue.');
+    keepAwake(false);
     updateMicUI();
   }
 
@@ -415,8 +443,10 @@
   // and hide it as soon as real text starts arriving.
   const kbTip = $('kbTip');
   dictBox.addEventListener('focus', () => {
+    keepAwake(true);
     if (!transcriptEl.children.length && !dictBox.value) kbTip.classList.add('show');
   });
+  dictBox.addEventListener('blur', () => keepAwake(listening));
 
   dictBox.addEventListener('input', () => {
     if (dictBox.value.trim()) kbTip.classList.remove('show');
