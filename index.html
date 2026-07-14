@@ -20,6 +20,9 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
+  /* Flip the whole app 180° — for reading across a table while the
+     phone's bottom mic points at the person speaking. */
+  body.flipped { transform: rotate(180deg); }
   body {
     background: var(--bg);
     color: var(--text);
@@ -232,6 +235,7 @@
   <button id="fontDown" class="ghost" title="Smaller text">A−</button>
   <button id="fontUp" class="ghost" title="Larger text">A+</button>
   <button id="toggleYue" class="ghost active" title="Show/hide original Cantonese">粵</button>
+  <button id="flipBtn" class="ghost" title="Flip the screen upside down">🔄</button>
   <button id="clearBtn" class="ghost">Clear</button>
   <button id="modeBtn" class="ghost" title="Switch input mode">⌨️</button>
   <button id="micBtn"><span class="dot"></span><span id="micLabel">Start listening</span></button>
@@ -548,6 +552,11 @@
   $('toggleYue').addEventListener('click', (e) => {
     document.body.classList.toggle('hide-yue');
     e.currentTarget.classList.toggle('active', !document.body.classList.contains('hide-yue'));
+  });
+
+  $('flipBtn').addEventListener('click', (e) => {
+    document.body.classList.toggle('flipped');
+    e.currentTarget.classList.toggle('active', document.body.classList.contains('flipped'));
   });
 
   let enSize = window.matchMedia('(max-width: 600px)').matches ? 1.7 : 2.2;
